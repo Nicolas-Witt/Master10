@@ -4,7 +4,6 @@ import multer from "multer";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 // Ajuste para rodar import ES6 no Node
 const __filename = fileURLToPath(import.meta.url);
@@ -18,25 +17,15 @@ app.use(express.static(__dirname));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configuração do multer para salvar arquivos em /uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, "uploads");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage });
+// Configuração do multer para usar memória (não salvar no disco)
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "nicolaswitt2007@gmail.com",
-    pass: "xkxz izma mfya xeut" // Cole aqui a App Password do Google
+    pass: "xkxz izma mfya xeut" // App Password do Google
   }
 });
 
@@ -49,12 +38,12 @@ app.post("/api/confirm-payment", upload.single("receipt"), async (req, res) => {
   console.log("Cliente:", buyerName, buyerEmail);
   console.log("Observações:", notes);
   console.log("Carrinho:", cart);
-  console.log("Arquivo salvo em:", file?.path);
+  console.log("Arquivo recebido:", file?.originalname);
 
   try {
     const mailOptions = {
       from: '"Loja Básica" <nicolaswitt2007@gmail.com>',
-      to: "nicolaswitt2007@gmail.com", // Pode adicionar mais destinatários separados por vírgula
+      to: "nicolaswitt2007@gmail.com",
       subject: `Novo comprovante - Pedido #${orderId}`,
       text: `
 Pedido: ${orderId}
@@ -63,7 +52,7 @@ Observações: ${notes}
 Carrinho: ${cart}
       `,
       attachments: file ? [
-        { filename: file.originalname, path: file.path }
+        { filename: file.originalname, content: file.buffer }
       ] : []
     };
 
@@ -78,7 +67,7 @@ Carrinho: ${cart}
   }
 });
 
-// Iniciar servidor
+// Iniciar servidor (ignorado no Vercel, mas útil em localhost)
 app.listen(3000, () =>
   console.log("🚀 Servidor rodando em http://localhost:3000")
 );
