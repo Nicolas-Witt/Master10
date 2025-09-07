@@ -20,12 +20,12 @@ app.use(express.urlencoded({ extended: true }));
 // Configuração do multer para usar memória (não salvar no disco)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Configuração do Nodemailer
+// Configuração do Nodemailer (usando variáveis de ambiente)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "nicolaswitt2007@gmail.com",
-    pass: "xkxz izma mfya xeut" // App Password do Google
+    user: process.env.GMAIL_USER, // define em Environment Variables
+    pass: process.env.GMAIL_PASS  // define em Environment Variables
   }
 });
 
@@ -42,8 +42,8 @@ app.post("/api/confirm-payment", upload.single("receipt"), async (req, res) => {
 
   try {
     const mailOptions = {
-      from: '"Loja Básica" <nicolaswitt2007@gmail.com>',
-      to: "nicolaswitt2007@gmail.com",
+      from: `"Loja Básica" <${process.env.GMAIL_USER}>`,
+      to: process.env.GMAIL_USER,
       subject: `Novo comprovante - Pedido #${orderId}`,
       text: `
 Pedido: ${orderId}
@@ -51,23 +51,26 @@ Cliente: ${buyerName} (${buyerEmail})
 Observações: ${notes}
 Carrinho: ${cart}
       `,
-      attachments: file ? [
-        { filename: file.originalname, content: file.buffer }
-      ] : []
+      attachments: file
+        ? [{ filename: file.originalname, content: file.buffer }]
+        : []
     };
 
-    // Envio do email
     const info = await transporter.sendMail(mailOptions);
     console.log("Email enviado:", info.response);
 
-    res.json({ success: true, message: "Comprovante recebido e e-mail enviado com sucesso!" });
+    res.json({
+      success: true,
+      message: "Comprovante recebido e e-mail enviado com sucesso!"
+    });
   } catch (err) {
     console.error("Erro ao enviar e-mail:", err);
-    res.status(500).json({ success: false, message: "Erro ao enviar e-mail" });
+    res.status(500).json({
+      success: false,
+      message: "Erro ao enviar e-mail"
+    });
   }
 });
 
-// Iniciar servidor (ignorado no Vercel, mas útil em localhost)
-app.listen(3000, () =>
-  console.log("🚀 Servidor rodando em http://localhost:3000")
-);
+// Exporta para rodar no Vercel (sem app.listen)
+export default app;
